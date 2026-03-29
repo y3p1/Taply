@@ -1,0 +1,233 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap');
+@import 'tailwindcss';
+@import 'tw-animate-css';
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  /* Shadcn/ui defaults - base */
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: oklch(0.205 0 0);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.556 0 0);
+  --accent: oklch(0.97 0 0);
+  --accent-foreground: oklch(0.205 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --destructive-foreground: oklch(0.577 0.245 27.325);
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
+  --ring: oklch(0.708 0 0);
+  --chart-1: oklch(0.646 0.222 41.116);
+  --chart-2: oklch(0.6 0.118 184.704);
+  --chart-3: oklch(0.398 0.07 227.392);
+  --chart-4: oklch(0.828 0.189 84.429);
+  --chart-5: oklch(0.769 0.188 70.08);
+  --radius: 0.625rem; /* Base radius from shadcn, will be overridden by user's --radius where applicable */
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: oklch(0.205 0 0);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.97 0 0);
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.708 0 0);
+  
+  /* Neo-Brutalist Color System - Overrides Shadcn defaults */
+  --background: #FFFFFF;
+  --foreground: #1A1A1A;
+  --card: #FFFFFF;
+  --card-foreground: #1A1A1A;
+  --popover: #FFFFFF;
+  --popover-foreground: #1A1A1A;
+  
+  /* Primary - Deep Purple */
+  --primary: #6B21A8;
+  --primary-foreground: #FFFFFF;
+  
+  /* Accent - Turquoise/Cyan */
+  --accent: #40E0D0;
+  --accent-foreground: #1A1A1A;
+  
+  /* Secondary */
+  --secondary: #F5F5F5;
+  --secondary-foreground: #1A1A1A;
+  
+  /* Muted */
+  --muted: #F0F0F0;
+  --muted-foreground: #6B7280;
+  
+  /* Status Colors */
+  --success: #22C55E;
+  --success-foreground: #FFFFFF;
+  --warning: #F59E0B;
+  --warning-foreground: #1A1A1A;
+  --destructive: #EF4444;
+  --destructive-foreground: #FFFFFF;
+  
+  /* Borders - Thick Neo-Brutalist */
+  --border: #1A1A1A;
+  --border-width: 3px;
+  --input: #1A1A1A;
+  --ring: #6B21A8;
+  
+  /* Neo-Brutalist specifics */
+  --shadow-offset: 4px;
+  --radius: 8px; /* User's specific radius */
+  
+  /* Chart colors */
+  --chart-1: #6B21A8;
+  --chart-2: #40E0D0;
+  --chart-3: #22C55E;
+  --chart-4: #F59E0B;
+  --chart-5: #EF4444;
+}
+
+.dark {
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.145 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.145 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.985 0 0);
+  --primary-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.269 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.396 0.141 25.723);
+  --destructive-foreground: oklch(0.637 0.237 25.331);
+  --border: oklch(0.269 0 0);
+  --input: oklch(0.269 0 0);
+  --ring: oklch(0.439 0 0);
+  --chart-1: oklch(0.488 0.243 264.376);
+  --chart-2: oklch(0.696 0.17 162.48);
+  --chart-3: oklch(0.769 0.188 70.08);
+  --chart-4: oklch(0.627 0.265 303.9);
+  --chart-5: oklch(0.645 0.246 16.439);
+  --sidebar: oklch(0.205 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(0.269 0 0);
+  --sidebar-ring: oklch(0.439 0 0);
+}
+
+@theme inline {
+  --font-sans: 'Space Grotesk', system-ui, sans-serif;
+  --font-mono: 'Space Grotesk', monospace;
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  
+  /* Radius definitions using user's --radius */
+  --radius-sm: calc(var(--radius) - 4px); /* Adjusted from diff to use user's --radius */
+  --radius-md: calc(var(--radius) - 2px); /* Adjusted from diff to use user's --radius */
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px); /* Adjusted from diff to use user's --radius */
+
+  /* Sidebar variables from shadcn */
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}
+
+@layer base {
+  * {
+    /* User's original border color is #1A1A1A, which maps to --border in their :root. */
+    /* Shadcn defaults to --border from its own :root. */
+    /* Since user's --border is #1A1A1A and takes precedence, this should be correct. */
+    @apply border-border outline-ring/50;
+  }
+  body {
+    /* User's original body styling */
+    background-color: var(--background); /* This will be #FFFFFF from user's :root */
+    color: var(--foreground); /* This will be #1A1A1A from user's :root */
+    font-family: 'Space Grotesk', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+
+    /* Shadcn applies bg-background text-foreground globally for consistency */
+    /* Since user's variables override shadcn's, this will use user's colors */
+    @apply bg-background text-foreground;
+  }
+}
+
+/* Neo-Brutalist Utility Classes */
+@layer utilities {
+  .brutalist-border {
+    border: var(--border-width, 3px) solid var(--border, #1A1A1A); /* Use CSS vars for consistency */
+  }
+  
+  .brutalist-shadow {
+    box-shadow: var(--shadow-offset, 4px) var(--shadow-offset, 4px) 0px var(--border, #1A1A1A);
+  }
+  
+  .brutalist-shadow-sm {
+    box-shadow: calc(var(--shadow-offset, 4px) / 2) calc(var(--shadow-offset, 4px) / 2) 0px var(--border, #1A1A1A);
+  }
+  
+  .brutalist-shadow-lg {
+    box-shadow: calc(var(--shadow-offset, 4px) + 2px) calc(var(--shadow-offset, 4px) + 2px) 0px var(--border, #1A1A1A);
+  }
+  
+  .brutalist-card {
+    border: var(--border-width, 3px) solid var(--border, #1A1A1A);
+    box-shadow: var(--shadow-offset, 4px) var(--shadow-offset, 4px) 0px var(--border, #1A1A1A);
+    background: var(--card, #FFFFFF);
+  }
+  
+  .brutalist-button {
+    border: var(--border-width, 3px) solid var(--border, #1A1A1A);
+    box-shadow: var(--shadow-offset, 4px) var(--shadow-offset, 4px) 0px var(--border, #1A1A1A);
+    transition: all 0.1s ease;
+  }
+  
+  .brutalist-button:hover {
+    transform: translate(2px, 2px);
+    box-shadow: calc(var(--shadow-offset, 4px) / 2) calc(var(--shadow-offset, 4px) / 2) 0px var(--border, #1A1A1A);
+  }
+  
+  .brutalist-button:active {
+    transform: translate(var(--shadow-offset, 4px), var(--shadow-offset, 4px));
+    box-shadow: 0px 0px 0px var(--border, #1A1A1A);
+  }
+}
