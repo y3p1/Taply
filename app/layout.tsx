@@ -12,7 +12,7 @@ const spaceGrotesk = Space_Grotesk({
 
 export const metadata: Metadata = {
   title: 'Taply - Employee Time & Location Monitor',
-  description: 'Global employee monitoring platform with selfie-based clock-in, GPS tracking, and automated attendance reports',
+  description: 'Philippine employee monitoring platform with selfie-based clock-in, GPS tracking, and automated attendance reports',
   icons: {
     icon: [
       {
