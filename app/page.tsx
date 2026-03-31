@@ -47,34 +47,40 @@ export default function Dashboard() {
 
     const fetchData = async () => {
       try {
-        // Fetch clock status
-        const clockRes = await fetch('/api/clock')
-        if (clockRes.ok) {
-          const clockData = await clockRes.json()
+        // Fire all API calls in parallel — not one-by-one
+        const fetches: Promise<Response>[] = [
+          fetch('/api/clock'),
+          fetch('/api/profile'),
+        ]
+        if (user.role === 'MANAGER') {
+          fetches.push(fetch('/api/team'))
+        }
+
+        const responses = await Promise.all(fetches)
+
+        // Process clock status
+        if (responses[0].ok) {
+          const clockData = await responses[0].json()
           setClockStatus(clockData.data)
         }
 
-        // Fetch profile for report status
-        const profileRes = await fetch('/api/profile')
-        if (profileRes.ok) {
-          const profileData = await profileRes.json()
+        // Process profile / report status
+        if (responses[1].ok) {
+          const profileData = await responses[1].json()
           setReportStatus(profileData.data.latestReportStatus)
         }
 
-        // Manager: fetch team data
-        if (user.role === 'MANAGER') {
-          const teamRes = await fetch('/api/team')
-          if (teamRes.ok) {
-            const teamData = await teamRes.json()
-            setTeamMembers(teamData.data.members.map((m: TeamMember) => ({
-              id: m.id,
-              name: m.name,
-              image: '',
-              position: m.coords ? { x: 20 + Math.random() * 60, y: 20 + Math.random() * 60 } : { x: 50, y: 50 },
-              isOnline: m.status === 'active',
-            })))
-            setActiveCount(teamData.data.activeCount)
-          }
+        // Process team data (manager only)
+        if (responses[2] && responses[2].ok) {
+          const teamData = await responses[2].json()
+          setTeamMembers(teamData.data.members.map((m: TeamMember) => ({
+            id: m.id,
+            name: m.name,
+            image: '',
+            position: m.coords ? { x: 20 + Math.random() * 60, y: 20 + Math.random() * 60 } : { x: 50, y: 50 },
+            isOnline: m.status === 'active',
+          })))
+          setActiveCount(teamData.data.activeCount)
         }
       } catch (error) {
         console.error('Dashboard fetch error:', error)
@@ -88,8 +94,36 @@ export default function Dashboard() {
 
   if (!user || loading) {
     return (
-      <main className="min-h-screen bg-white flex items-center justify-center">
-        <div className="animate-pulse text-[#6B7280]">Loading...</div>
+      <main className="min-h-screen bg-white pb-24">
+        {/* Skeleton header */}
+        <div className="px-5 pt-6 pb-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="h-3 w-20 bg-[#F5F5F5] rounded animate-pulse" />
+              <div className="h-7 w-36 bg-[#F5F5F5] rounded animate-pulse mt-1" />
+            </div>
+            <div className="w-12 h-12 bg-[#F5F5F5] rounded-full animate-pulse" />
+          </div>
+        </div>
+        {/* Skeleton time button */}
+        <div className="px-5 py-4">
+          <div className="h-16 bg-[#E0E7FF] rounded-xl animate-pulse border-[3px] border-[#E5E7EB]" />
+        </div>
+        {/* Skeleton status card */}
+        <div className="px-5 py-2">
+          <div className="h-24 border-[2px] border-[#E5E7EB] rounded-lg animate-pulse p-4">
+            <div className="h-4 w-28 bg-[#F5F5F5] rounded mb-3" />
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 bg-[#F5F5F5] rounded-lg" />
+              <div className="h-4 w-32 bg-[#F5F5F5] rounded" />
+            </div>
+          </div>
+        </div>
+        {/* Skeleton notification */}
+        <div className="px-5 py-2">
+          <div className="h-12 bg-[#FEF3C7] rounded-lg animate-pulse border-[2px] border-[#E5E7EB]" />
+        </div>
+        <BottomNav />
       </main>
     )
   }
