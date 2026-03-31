@@ -1,78 +1,65 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { useAuth } from "@/lib/auth-context"
 import { BottomNav } from "@/components/brutalist/bottom-nav"
-import { BrutalistButton } from "@/components/brutalist/brutalist-button"
-import { StatusBadge } from "@/components/brutalist/status-badge"
 import { UserAvatar } from "@/components/brutalist/user-avatar"
-import { ArrowLeft, Calendar, ChevronDown, Download, Filter, MoreVertical } from "lucide-react"
+import { ArrowLeft, Calendar, Download, Filter, MoreVertical } from "lucide-react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 
-interface AttendanceRecord {
+interface TimeEntryWithUser {
   id: string
-  employee: {
-    name: string
-    image?: string
-  }
-  time: string
-  location: string
-  locationType: "office" | "remote"
-  status: "clock-in" | "clock-out"
+  type: string
+  timestamp: string
+  locationName: string
+  user: { id: string; name: string; photoUrl: string | null }
 }
 
-const attendanceRecords: AttendanceRecord[] = [
-  {
-    id: "1",
-    employee: { name: "Marcus Chen" },
-    time: "08:02 AM",
-    location: "New York, NY",
-    locationType: "office",
-    status: "clock-in"
-  },
-  {
-    id: "2",
-    employee: { name: "Sarah Jenkins" },
-    time: "08:15 AM",
-    location: "Los Angeles, CA",
-    locationType: "office",
-    status: "clock-in"
-  },
-  {
-    id: "3",
-    employee: { name: "David Kalu" },
-    time: "04:45 PM",
-    location: "Remote - Toronto, ON",
-    locationType: "remote",
-    status: "clock-out"
-  },
-  {
-    id: "4",
-    employee: { name: "Elena Rossi" },
-    time: "09:12 AM",
-    location: "Home - Boston, MA",
-    locationType: "office",
-    status: "clock-in"
-  },
-  {
-    id: "5",
-    employee: { name: "James Wilson" },
-    time: "10:30 AM",
-    location: "Seattle, WA",
-    locationType: "office",
-    status: "clock-in"
-  },
-  {
-    id: "6",
-    employee: { name: "Lisa Chen" },
-    time: "12:00 PM",
-    location: "San Francisco, CA",
-    locationType: "office",
-    status: "clock-in"
-  },
-]
-
 export default function AttendanceLogsPage() {
-  const [period, setPeriod] = useState("biweekly")
+  const { user } = useAuth()
+  const router = useRouter()
+  const [entries, setEntries] = useState<TimeEntryWithUser[]>([])
+  const [periodHours, setPeriodHours] = useState(0)
+  const [loading, setLoading] = useState(true)
+  const [page, setPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
+
+  useEffect(() => {
+    // Redirect employees away
+    if (user && user.role !== 'MANAGER') {
+      router.replace('/')
+      return
+    }
+    if (!user) return
+
+    const fetchLogs = async () => {
+      try {
+        const res = await fetch(`/api/logs?page=${page}&limit=20`)
+        if (res.ok) {
+          const data = await res.json()
+          setEntries(data.data.entries)
+          setPeriodHours(data.data.periodHours)
+          setTotalPages(data.data.pagination.totalPages)
+        }
+      } catch (error) {
+        console.error('Logs fetch error:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchLogs()
+  }, [user, router, page])
+
+  if (!user || user.role !== 'MANAGER') return null
+
+  if (loading) {
+    return (
+      <main className="min-h-screen bg-white flex items-center justify-center">
+        <div className="animate-pulse text-[#6B7280]">Loading...</div>
+      </main>
+    )
+  }
 
   return (
     <main className="min-h-screen bg-white pb-24">
@@ -80,7 +67,7 @@ export default function AttendanceLogsPage() {
       <div className="px-5 pt-6 pb-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Link 
+            <Link
               href="/"
               className="w-9 h-9 border-[2px] border-[#1A1A1A] rounded-lg flex items-center justify-center hover:bg-[#F5F5F5] transition-colors"
             >
@@ -101,14 +88,16 @@ export default function AttendanceLogsPage() {
             <div>
               <p className="text-xs text-white/70 font-medium uppercase tracking-wider">Total Period Hours</p>
               <p className="text-5xl font-bold mt-2">
-                84.5<span className="text-2xl ml-1">hrs</span>
+                {periodHours}<span className="text-2xl ml-1">hrs</span>
               </p>
             </div>
-            <StatusBadge status="biweekly" />
+            <span className="inline-flex items-center px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider rounded bg-[#40E0D0] text-[#1A1A1A]">
+              BIWEEKLY
+            </span>
           </div>
           <div className="flex items-center gap-2 mt-4 text-white/80">
             <Calendar className="w-4 h-4" />
-            <span className="text-sm font-medium">Oct 14 - Oct 27, 2023</span>
+            <span className="text-sm font-medium">Current Biweekly Period</span>
           </div>
         </div>
       </div>
@@ -118,7 +107,7 @@ export default function AttendanceLogsPage() {
         <div className="flex items-center gap-3">
           <button className="flex-1 flex items-center justify-center gap-2 border-[2px] border-[#1A1A1A] rounded-lg px-4 py-2.5 bg-white hover:bg-[#F5F5F5] transition-colors">
             <Download className="w-4 h-4" />
-            <span className="text-sm font-semibold uppercase tracking-wide">Export Excel</span>
+            <span className="text-sm font-semibold uppercase tracking-wide">Export CSV</span>
           </button>
           <button className="w-11 h-11 bg-[#40E0D0] border-[2px] border-[#1A1A1A] rounded-lg flex items-center justify-center shadow-[2px_2px_0px_#1A1A1A] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-[1px_1px_0px_#1A1A1A] transition-all">
             <Filter className="w-5 h-5 text-[#1A1A1A]" />
@@ -137,46 +126,64 @@ export default function AttendanceLogsPage() {
 
       {/* Records List */}
       <div className="px-5">
-        {attendanceRecords.map((record, index) => (
-          <div 
-            key={record.id}
-            className={`flex items-center py-4 ${
-              index !== attendanceRecords.length - 1 ? "border-b border-[#E5E7EB]" : ""
-            }`}
-          >
-            <div className="flex items-center gap-3 flex-1">
-              <UserAvatar name={record.employee.name} size="md" />
-              <div>
-                <p className="font-semibold text-[#1A1A1A]">{record.employee.name}</p>
-                <p className="text-xs text-[#6B7280] mt-0.5">{record.time}</p>
+        {entries.length === 0 ? (
+          <div className="py-8 text-center text-[#6B7280]">No attendance records found</div>
+        ) : (
+          entries.map((entry, index) => (
+            <div
+              key={entry.id}
+              className={`flex items-center py-4 ${
+                index !== entries.length - 1 ? "border-b border-[#E5E7EB]" : ""
+              }`}
+            >
+              <div className="flex items-center gap-3 flex-1">
+                <UserAvatar name={entry.user.name} size="md" />
+                <div>
+                  <p className="font-semibold text-[#1A1A1A]">{entry.user.name}</p>
+                  <p className="text-xs text-[#6B7280] mt-0.5">
+                    {new Date(entry.timestamp).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                  </p>
+                </div>
+              </div>
+              <div className="w-24 flex justify-center">
+                <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded bg-[#40E0D0] text-[#1A1A1A]">
+                  {entry.locationName || 'Unknown'}
+                </span>
+              </div>
+              <div className="w-20 text-right">
+                <span className={`text-xs font-bold uppercase tracking-wider ${
+                  entry.type === "CLOCK_IN" ? "text-[#6B21A8]" : "text-[#6B7280]"
+                }`}>
+                  {entry.type === "CLOCK_IN" ? "CLOCK IN" : "CLOCK OUT"}
+                </span>
               </div>
             </div>
-            <div className="w-24 flex justify-center">
-              <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded ${
-                record.locationType === "office" 
-                  ? "bg-[#40E0D0] text-[#1A1A1A]" 
-                  : "bg-[#FEE2E2] text-[#991B1B]"
-              }`}>
-                {record.location}
-              </span>
-            </div>
-            <div className="w-20 text-right">
-              <span className={`text-xs font-bold uppercase tracking-wider ${
-                record.status === "clock-in" ? "text-[#6B21A8]" : "text-[#6B7280]"
-              }`}>
-                {record.status === "clock-in" ? "CLOCK IN" : "CLOCK OUT"}
-              </span>
-            </div>
-          </div>
-        ))}
+          ))
+        )}
       </div>
 
-      {/* Show More */}
-      <div className="px-5 py-4">
-        <button className="w-full text-center py-3 text-sm font-semibold text-[#6B7280] uppercase tracking-wider border-t border-b border-[#E5E7EB]">
-          Show Older Records
-        </button>
-      </div>
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="px-5 py-4 flex items-center justify-center gap-3">
+          <button
+            onClick={() => setPage(p => Math.max(1, p - 1))}
+            disabled={page === 1}
+            className="px-4 py-2 border-[2px] border-[#1A1A1A] rounded-lg text-sm font-semibold disabled:opacity-30"
+          >
+            Previous
+          </button>
+          <span className="text-sm font-semibold text-[#6B7280]">
+            {page} / {totalPages}
+          </span>
+          <button
+            onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+            disabled={page === totalPages}
+            className="px-4 py-2 border-[2px] border-[#1A1A1A] rounded-lg text-sm font-semibold disabled:opacity-30"
+          >
+            Next
+          </button>
+        </div>
+      )}
 
       <BottomNav />
     </main>

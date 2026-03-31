@@ -1,0 +1,159 @@
+// Taply MVP — Prisma Schema
+// Employee Time & Location Monitoring System
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── Enums ──────────────────────────────────────────────
+
+enum Role {
+  MANAGER
+  EMPLOYEE
+}
+
+enum UserStatus {
+  ACTIVE
+  ON_LEAVE
+  INACTIVE
+}
+
+enum WorkCategory {
+  HYBRID
+  REMOTE
+  HOME_BASED
+  LOCATION
+}
+
+enum TimeEntryType {
+  CLOCK_IN
+  CLOCK_OUT
+}
+
+enum ReportStatus {
+  PENDING
+  APPROVED
+  FLAGGED
+}
+
+// ─── Models ─────────────────────────────────────────────
+
+model Organization {
+  id        String   @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  users     User[]
+
+  @@map("organizations")
+}
+
+model User {
+  id             String       @id @default(cuid())
+  email          String       @unique
+  passwordHash   String
+  name           String
+  role           Role         @default(EMPLOYEE)
+  employeeNumber String       @unique
+  position       String       @default("")
+  department     String       @default("")
+  phone          String       @default("")
+  photoUrl       String?
+  status         UserStatus   @default(ACTIVE)
+  workCategory   WorkCategory @default(LOCATION)
+  workLocation   String       @default("")
+  joinDate       DateTime     @default(now())
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  // Relations
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  supervisorId   String?
+  supervisor     User?        @relation("SupervisorRelation", fields: [supervisorId], references: [id])
+  subordinates   User[]       @relation("SupervisorRelation")
+
+  timeEntries    TimeEntry[]
+  reports        Report[]       @relation("EmployeeReports")
+  reviewedReports Report[]     @relation("ReviewerReports")
+  sessions       Session[]
+
+  @@map("users")
+}
+
+model TimeEntry {
+  id           String        @id @default(cuid())
+  type         TimeEntryType
+  timestamp    DateTime      @default(now())
+  latitude     Float?
+  longitude    Float?
+  locationName String        @default("")
+  selfieUrl    String?
+  createdAt    DateTime      @default(now())
+
+  // Relations
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, timestamp])
+  @@map("time_entries")
+}
+
+model Report {
+  id          String       @id @default(cuid())
+  periodStart DateTime
+  periodEnd   DateTime
+  totalHours  Float        @default(0)
+  daysPresent Int          @default(0)
+  status      ReportStatus @default(PENDING)
+  submittedAt DateTime     @default(now())
+  workTags    String[]     @default([])
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  // Relations
+  userId     String
+  user       User   @relation("EmployeeReports", fields: [userId], references: [id], onDelete: Cascade)
+  reviewedById String?
+  reviewedBy   User?  @relation("ReviewerReports", fields: [reviewedById], references: [id])
+
+  days ReportDay[]
+
+  @@index([userId, periodStart])
+  @@map("reports")
+}
+
+model ReportDay {
+  id           String   @id @default(cuid())
+  date         DateTime
+  dayLabel     String   @default("") // "Mon", "Tue", etc.
+  hours        Float    @default(0)
+  timeIn       String   @default("-")
+  timeOut      String   @default("-")
+  locationName String   @default("")
+  isApproved   Boolean  @default(false)
+
+  // Relations
+  reportId String
+  report   Report @relation(fields: [reportId], references: [id], onDelete: Cascade)
+
+  @@map("report_days")
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  // Relations
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@map("sessions")
+}
