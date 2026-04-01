@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils"
 interface UserAvatarProps {
   name: string
   image?: string
-  size?: "sm" | "md" | "lg"
+  size?: "sm" | "md" | "lg" | "xl"
   showOnlineIndicator?: boolean
   isOnline?: boolean
   className?: string
@@ -29,7 +29,8 @@ export function UserAvatar({
   const sizeClasses = {
     sm: "w-8 h-8 text-xs",
     md: "w-12 h-12 text-sm",
-    lg: "w-16 h-16 text-lg"
+    lg: "w-16 h-16 text-lg",
+    xl: "w-20 h-20 text-xl"
   }
 
   return (

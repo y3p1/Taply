@@ -25,3 +25,14 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+/lib/generated/prisma
+
+# docker
+docker-compose.override.yml
+
+# prisma
+prisma/migrations/
+
+# cursor
+.cursor/

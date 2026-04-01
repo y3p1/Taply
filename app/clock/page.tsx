@@ -12,27 +12,66 @@ export default function ClockInPage() {
   const [step, setStep] = useState(1)
   const [stream, setStream] = useState<MediaStream | null>(null)
   const [capturedImage, setCapturedImage] = useState<string | null>(null)
-  const [location, setLocation] = useState<{ city: string; coords: string } | null>(null)
+  const [location, setLocation] = useState<{ city: string; coords: string; lat: number; lng: number } | null>(null)
   const [isCapturing, setIsCapturing] = useState(false)
+  const [isClockedIn, setIsClockedIn] = useState(false)
+  const [clockTime, setClockTime] = useState<string>("")
+  const [error, setError] = useState("")
 
-  // Get user location
+  // Check current clock status
+  useEffect(() => {
+    const checkStatus = async () => {
+      try {
+        const res = await fetch('/api/clock')
+        if (res.ok) {
+          const data = await res.json()
+          setIsClockedIn(data.data.isClockedIn)
+        }
+      } catch (e) {
+        console.error('Failed to check clock status:', e)
+      }
+    }
+    checkStatus()
+  }, [])
+
+  // Get user location via real GPS
   useEffect(() => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
-        (position) => {
+        async (position) => {
           const { latitude, longitude } = position.coords
-          setLocation({
-            city: "San Francisco, CA",
-            coords: `${latitude.toFixed(4)}° N, ${longitude.toFixed(4)}° W`
-          })
+          // Use reverse geocoding API
+          try {
+            const res = await fetch(
+              `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json&zoom=10`,
+              { headers: { 'User-Agent': 'Taply-MVP/1.0' } }
+            )
+            const data = await res.json()
+            const city = data.address?.city || data.address?.town || data.address?.village || 'Unknown'
+            const state = data.address?.state || data.address?.country || ''
+            setLocation({
+              city: `${city}, ${state}`,
+              coords: `${latitude.toFixed(4)}°, ${longitude.toFixed(4)}°`,
+              lat: latitude,
+              lng: longitude,
+            })
+          } catch {
+            setLocation({
+              city: "Location detected",
+              coords: `${latitude.toFixed(4)}°, ${longitude.toFixed(4)}°`,
+              lat: latitude,
+              lng: longitude,
+            })
+          }
         },
-        () => {
-          setLocation({
-            city: "San Francisco, CA",
-            coords: "37.7749° N, 122.4194° W"
-          })
-        }
+        (err) => {
+          console.error('Geolocation error:', err)
+          setError("GPS access denied. Please enable location services.")
+        },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
       )
+    } else {
+      setError("Geolocation is not supported by this browser.")
     }
   }, [])
 
@@ -47,8 +86,8 @@ export default function ClockInPage() {
         if (videoRef.current) {
           videoRef.current.srcObject = mediaStream
         }
-      } catch (error) {
-        console.log("[v0] Camera access denied or not available")
+      } catch {
+        console.log("[Taply] Camera access denied or not available")
       }
     }
 
@@ -61,29 +100,68 @@ export default function ClockInPage() {
         stream.getTracks().forEach(track => track.stop())
       }
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step])
 
-  const handleCapture = () => {
+  const handleCapture = async () => {
     if (videoRef.current && canvasRef.current) {
       setIsCapturing(true)
+      setError("")
       const ctx = canvasRef.current.getContext("2d")
       if (ctx) {
         canvasRef.current.width = videoRef.current.videoWidth
         canvasRef.current.height = videoRef.current.videoHeight
         ctx.drawImage(videoRef.current, 0, 0)
-        const imageData = canvasRef.current.toDataURL("image/jpeg")
+        const imageData = canvasRef.current.toDataURL("image/jpeg", 0.7)
         setCapturedImage(imageData)
         
         // Stop camera
         if (stream) {
           stream.getTracks().forEach(track => track.stop())
         }
-        
-        // Move to success step
-        setTimeout(() => {
+
+        try {
+          // Upload selfie
+          let selfieUrl = imageData
+          try {
+            const uploadRes = await fetch('/api/upload', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ image: imageData }),
+            })
+            if (uploadRes.ok) {
+              const uploadData = await uploadRes.json()
+              selfieUrl = uploadData.data.url
+            }
+          } catch {
+            // Use base64 fallback
+          }
+
+          // Clock in/out
+          const clockType = isClockedIn ? 'CLOCK_OUT' : 'CLOCK_IN'
+          const clockRes = await fetch('/api/clock', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              type: clockType,
+              latitude: location?.lat,
+              longitude: location?.lng,
+              selfieUrl,
+            }),
+          })
+
+          if (!clockRes.ok) {
+            const data = await clockRes.json()
+            throw new Error(data.error || 'Clock operation failed')
+          }
+
+          setClockTime(new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }))
           setStep(3)
+        } catch (err) {
+          setError(err instanceof Error ? err.message : 'Failed to clock in/out')
+        } finally {
           setIsCapturing(false)
-        }, 500)
+        }
       }
     }
   }
@@ -103,14 +181,25 @@ export default function ClockInPage() {
         </button>
       </div>
 
+      {/* Error banner */}
+      {error && (
+        <div className="px-5 py-2">
+          <div className="bg-[#FEE2E2] border-[2px] border-[#991B1B] rounded-lg p-3">
+            <p className="text-sm font-semibold text-[#991B1B]">{error}</p>
+          </div>
+        </div>
+      )}
+
       {/* Step 1: Confirmation */}
       {step === 1 && (
         <div className="px-5 py-8">
           <h1 className="text-4xl font-bold text-[#6B21A8] uppercase leading-tight">
-            Time In<br />Verification
+            {isClockedIn ? "Time Out" : "Time In"}<br />Verification
           </h1>
           <p className="text-[#6B7280] mt-4 text-lg">
-            Ready to start your shift? We&apos;ll capture your selfie and location to verify your clock-in.
+            {isClockedIn
+              ? "Ready to end your shift? We'll capture your selfie and location to verify your clock-out."
+              : "Ready to start your shift? We'll capture your selfie and location to verify your clock-in."}
           </p>
           
           <div className="mt-8 space-y-4">
@@ -128,12 +217,14 @@ export default function ClockInPage() {
             
             <div className="border-[3px] border-[#1A1A1A] rounded-lg p-4 bg-[#F5F5F5] shadow-[4px_4px_0px_#1A1A1A]">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-[#40E0D0] rounded-lg flex items-center justify-center border-2 border-[#1A1A1A]">
+                <div className={`w-10 h-10 rounded-lg flex items-center justify-center border-2 border-[#1A1A1A] ${location ? 'bg-[#40E0D0]' : 'bg-[#FEF3C7]'}`}>
                   <MapPin className="w-5 h-5 text-[#1A1A1A]" />
                 </div>
                 <div>
                   <p className="font-bold text-[#1A1A1A]">GPS Location</p>
-                  <p className="text-xs text-[#6B7280]">Your location will be recorded automatically</p>
+                  <p className="text-xs text-[#6B7280]">
+                    {location ? `✓ ${location.city}` : 'Detecting your location...'}
+                  </p>
                 </div>
               </div>
             </div>
@@ -145,8 +236,9 @@ export default function ClockInPage() {
               size="xl"
               fullWidth
               onClick={() => setStep(2)}
+              disabled={!location}
             >
-              Continue to Camera
+              {location ? 'Continue to Camera' : 'Waiting for GPS...'}
             </BrutalistButton>
           </div>
         </div>
@@ -159,23 +251,17 @@ export default function ClockInPage() {
             Selfie<br />Verification
           </h1>
           <p className="text-[#6B7280] mt-2">
-            Please verify your identity to clock in.
+            Please verify your identity to {isClockedIn ? 'clock out' : 'clock in'}.
           </p>
           
           {/* Camera View */}
           <div className="mt-6 relative">
-            {/* Dashed border frame */}
             <div className="absolute -inset-3 border-[3px] border-dashed border-[#40E0D0] rounded-xl pointer-events-none z-10" />
-            
-            {/* Camera frame styled like DSLR */}
             <div className="border-[4px] border-[#1A1A1A] rounded-xl bg-[#2A2A2A] p-3 shadow-[6px_6px_0px_#1A1A1A] overflow-hidden relative">
-              {/* Top bar with live indicator */}
               <div className="absolute top-2 left-3 z-20 flex items-center gap-2 bg-[#1A1A1A]/80 px-2 py-1 rounded">
                 <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
                 <span className="text-[10px] font-bold text-white uppercase tracking-wider">Live Preview</span>
               </div>
-              
-              {/* Video feed */}
               <div className="aspect-[4/3] bg-[#1A1A1A] rounded-lg overflow-hidden relative">
                 <video
                   ref={videoRef}
@@ -185,17 +271,9 @@ export default function ClockInPage() {
                   className="w-full h-full object-cover scale-x-[-1]"
                 />
                 <canvas ref={canvasRef} className="hidden" />
-                
-                {/* Face guide overlay */}
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                   <div className="w-40 h-52 border-2 border-white/30 rounded-full" />
                 </div>
-              </div>
-              
-              {/* Camera controls decoration */}
-              <div className="absolute right-2 top-1/2 -translate-y-1/2 space-y-2">
-                <div className="w-6 h-6 bg-[#3A3A3A] rounded-full border border-[#4A4A4A]" />
-                <div className="w-8 h-8 bg-[#3A3A3A] rounded-full border-2 border-[#4A4A4A]" />
               </div>
             </div>
           </div>
@@ -210,7 +288,7 @@ export default function ClockInPage() {
               disabled={isCapturing}
             >
               <Camera className="w-6 h-6" />
-              <span>{isCapturing ? "Capturing..." : "Capture & Clock In"}</span>
+              <span>{isCapturing ? "Processing..." : `Capture & ${isClockedIn ? 'Clock Out' : 'Clock In'}`}</span>
             </BrutalistButton>
           </div>
           
@@ -242,18 +320,17 @@ export default function ClockInPage() {
           </div>
           
           <h1 className="text-4xl font-bold text-[#6B21A8] uppercase leading-tight mt-8">
-            Clocked In!
+            {isClockedIn ? "Clocked Out!" : "Clocked In!"}
           </h1>
           <p className="text-[#6B7280] mt-4 text-lg">
-            Your shift has started. Stay productive!
+            {isClockedIn ? "Your shift has ended. Great work today!" : "Your shift has started. Stay productive!"}
           </p>
           
-          {/* Captured selfie preview */}
           {capturedImage && (
             <div className="mt-8 inline-block">
               <div className="border-[3px] border-[#1A1A1A] rounded-xl overflow-hidden shadow-[4px_4px_0px_#1A1A1A] w-32 h-32 mx-auto">
                 <img 
-                  src={capturedImage || "/placeholder.svg"} 
+                  src={capturedImage} 
                   alt="Captured selfie" 
                   className="w-full h-full object-cover scale-x-[-1]"
                 />
@@ -261,20 +338,17 @@ export default function ClockInPage() {
             </div>
           )}
           
-          {/* Details */}
           <div className="mt-8 space-y-3 text-left">
             <div className="border-[3px] border-[#1A1A1A] rounded-lg p-4 bg-[#F5F5F5] shadow-[4px_4px_0px_#1A1A1A]">
               <div className="flex items-center justify-between">
                 <span className="text-sm text-[#6B7280]">Time</span>
-                <span className="font-bold text-[#1A1A1A]">
-                  {new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}
-                </span>
+                <span className="font-bold text-[#1A1A1A]">{clockTime}</span>
               </div>
             </div>
             <div className="border-[3px] border-[#1A1A1A] rounded-lg p-4 bg-[#F5F5F5] shadow-[4px_4px_0px_#1A1A1A]">
               <div className="flex items-center justify-between">
                 <span className="text-sm text-[#6B7280]">Location</span>
-                <span className="font-bold text-[#1A1A1A]">{location?.city || "San Francisco, CA"}</span>
+                <span className="font-bold text-[#1A1A1A]">{location?.city || "N/A"}</span>
               </div>
             </div>
           </div>
